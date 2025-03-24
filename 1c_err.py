@@ -52,6 +52,12 @@ def MonteCarloSampling(Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, total_
         if j < Therm_steps:
             xNew = xOld + 0.5 * DriftForce(xOld, Alpha) * timestep + MCMatrix[j, :, :] * sqrt(timestep)
             psiNew = WaveFunction(xNew, Alpha)
+            
+            if np.any(psiOld<0):
+                return np.zeros(N_Alpha+1),0,0,MCEnergy
+            if np.any(psiOld==0):
+                return np.ones(N_Alpha+1),0,0,MCEnergy
+            
             moves = (((psiNew**2) * GF(xOld, xNew, DriftForce(xOld, Alpha), Alpha)) / ((psiOld**2))) - np.random.normal(0, sigma_gaussian)
             moves = np.where(moves > 0, 1, 0)
             matrixmoves = np.ones((xOld.shape[0], D)) * moves[:, np.newaxis]
@@ -61,6 +67,12 @@ def MonteCarloSampling(Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, total_
             xNew = xOld + 0.5 * DriftForce(xOld, Alpha) * timestep + MCMatrix[j, :, :] * sqrt(timestep)
             psiNew = WaveFunction(xNew, Alpha)
             total_steps += xOld.shape[0]
+            
+            if np.any(psiOld<0):
+                return np.zeros(N_Alpha+1),0,0,MCEnergy
+            if np.any(psiOld==0):
+                return np.ones(N_Alpha+1),0,0,MCEnergy
+            
             moves = (((psiNew**2) * GF(xOld, xNew, DriftForce(xOld, Alpha), Alpha)) / ((psiOld**2))) - np.random.normal(0, sigma_gaussian)
             moves = np.where(moves > 0, 1, 0)
             matrixmoves = np.ones((xOld.shape[0], D)) * moves[:, np.newaxis]
@@ -84,9 +96,6 @@ def ErrorHandling(MCEnergy_Alpha):
     n = MCEnergy_Alpha.shape[0]
 
     num_blocks = (n + block_size - 1) // block_size
-    if not isinstance(num_blocks,int):
-        print("Number of MC Cycles is not a multiple of 10000: the number of blocks is not an integer")
-        exit()
 
     for block in prange(num_blocks):
         start = block * block_size
@@ -123,6 +132,16 @@ for D in [1, 2, 3]:
             MCMatrix = RandomMatrix(N_Cycles, N, D)
             MeanEnergy, total_steps, rejected_steps, MatrixEnergy = MonteCarloSampling(Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, total_steps, rejected_steps, D)
             MCEnergy = MatrixEnergy
+            if MeanEnergy.shape[0]==N_Alpha+1:
+                if MeanEnergy==np.zeros(N_Alpha+1):
+                    print("The wavefunction is negative")
+                    sys.exit()
+                if MeanEnergy==np.ones(N_Alpha+1):
+                    print("Division by 0: the Wavefunction is too small")
+                    sys.exit()
+            if not ((N_Cycles-Therm_steps)/block_size).is_integer():
+                print(f"Number of MC Cycles is not a multiple of {block_size}: the number of blocks is not an integer")
+                sys.exit()
             sigma2[Alpha_Pos], tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos, :])
 
         rejection_percentage = (rejected_steps / total_steps) * 100
@@ -134,8 +153,10 @@ for D in [1, 2, 3]:
         err = np.sqrt(sigma2 * np.abs(tau_bar) / (N_Cycles - Therm_steps))
         min_error = err[min_index]
         print(f"Optimal alpha for N={N}: {best_alpha}, Minimum energy: {min_energy}")
-        print(f"Error for minimum energy (Alpha = {best_alpha}): {min_error}")
-
+        if D==3:
+            print(f"Error for minimum energy (Alpha = {best_alpha}): {min_error}")
+        else:
+            print("Error not computed for D=/=3")
 
         plt.figure()
         plt.errorbar(alpha_values, MeanEnergy, yerr=err, label=f"N={N}", color='b', marker='o')

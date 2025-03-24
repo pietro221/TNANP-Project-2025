@@ -142,7 +142,8 @@ for D in [1, 2, 3]:
             if not ((N_Cycles-Therm_steps)/block_size).is_integer():
                 print(f"Number of MC Cycles is not a multiple of {block_size}: the number of blocks is not an integer")
                 sys.exit()
-            sigma2[Alpha_Pos], tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos, :])
+            if D==3:
+                sigma2[Alpha_Pos], tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos, :])
 
         rejection_percentage = (rejected_steps / total_steps) * 100
         print(f"Rejection Percentage for N={N}: {rejection_percentage:.2f}%")

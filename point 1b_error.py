@@ -61,7 +61,7 @@ def ErrorHandling(MCEnergy_Alpha, block_size=10000):
     numerator = 0.0
     n = MCEnergy_Alpha.shape[0]
     
-    num_blocks = n // block_size   #+ (n % block_size != 0)  # Numero totale di blocchi
+    num_blocks = n // block_size 
     
     if not isinstance(num_blocks,int):
         print("Number of MC Cycles is not a multiple of 10000: the number of blocks is not an integer")

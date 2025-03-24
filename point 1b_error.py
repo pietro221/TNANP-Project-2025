@@ -15,7 +15,7 @@ N_Cycles = 100000
 StepSize = np.array([2, 0.6, 0.2, 0.08], dtype=np.float64)
 Nvalues = np.array([1, 10, 100, 500])
 Therm_steps = 10000
-
+block_size=10000
 
 @njit
 def WaveFunction(x, alpha):
@@ -29,23 +29,35 @@ def RandomMatrix(N_Cycles, N, D):
     return np.random.rand(N_Cycles, N, D)
 
 @njit
-def MonteCarloSampling(Alpha, Alpha_Pos, N, N_Pos, MCMatrix, xOld, MCEnergy, rejected_steps, D):
+def MonteCarloSampling(Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, rejected_steps):
     psiOld = WaveFunction(xOld, Alpha)
 
     for j in range(1, N_Cycles):
         if j < Therm_steps:
             xNew = xOld + StepSize[N_Pos] * (MCMatrix[j, :, :] - 0.5)
             psiNew = WaveFunction(xNew, Alpha)
+            
+            if psiOld<0:
+                return np.zeros(N_Alpha+1), 0 # Flag for negative wavefunction
+            if psiOld**2==0:
+                return np.ones(N_Alpha+1), 0 # Flag for null wavefunction
+                
             if psiOld > 0 and (psiNew ** 2 / psiOld ** 2) > np.random.rand():
                 xOld[:, :] = xNew
                 psiOld = psiNew            
         else:
             xNew = xOld + StepSize[N_Pos] * (MCMatrix[j, :, :] - 0.5)
             psiNew = WaveFunction(xNew, Alpha)
-            if psiOld > 0 and (psiNew ** 2 / psiOld ** 2) > np.random.rand():
+                
+            if psiOld<0:
+                return np.zeros(N_Alpha+1), 0 # Flag for negative wavefunction
+            if psiOld**2==0:
+                return np.ones(N_Alpha+1), 0 # Flag for null wavefunction
+            
+            if (psiNew ** 2 / psiOld ** 2) > np.random.rand():
                 xOld[:, :] = xNew
                 psiOld = psiNew
-                MCEnergy[Alpha_Pos, j - Therm_steps] = LocalEnergy(xOld, N, Alpha, D)
+                MCEnergy[Alpha_Pos, j - Therm_steps] = LocalEnergy(xOld, xOld.shape[0], Alpha, xOld.shape[1])
             else:
                 rejected_steps += 1
                 MCEnergy[Alpha_Pos, j-Therm_steps] = MCEnergy[Alpha_Pos, j - Therm_steps- 1]
@@ -53,26 +65,23 @@ def MonteCarloSampling(Alpha, Alpha_Pos, N, N_Pos, MCMatrix, xOld, MCEnergy, rej
     MeanEnergy = np.sum(MCEnergy, axis=1) / (N_Cycles - Therm_steps)
 
     return MeanEnergy, rejected_steps
+    
 @njit(parallel=True)
-def ErrorHandling(MCEnergy_Alpha, block_size=10000):
+def ErrorHandling(MCEnergy_Alpha):
     MeanEnergy = np.sum(MCEnergy_Alpha) / (N_Cycles - Therm_steps)
     sigma2 = np.sum((MCEnergy_Alpha - MeanEnergy) ** 2) / (N_Cycles - Therm_steps)
     
-    numerator = 0.0
+    numerator = 0
     n = MCEnergy_Alpha.shape[0]
     
-    num_blocks = n // block_size 
-    
-    if not isinstance(num_blocks,int):
-        print("Number of MC Cycles is not a multiple of 10000: the number of blocks is not an integer")
-        exit()
+    num_blocks = n // block_size   #+ (n % block_size != 0)  # Numero totale di blocchi
         
     for block in prange(num_blocks):  # Parallelizzazione con prange
         start = block * block_size
         end = min((block + 1) * block_size, n)
         
         for tau in range(start, end):  # Elaborazione solo sui dati del blocco corrente
-            sum_corr = 0.0
+            sum_corr = 0
             for i in range(n - tau):
                 sum_corr += MCEnergy_Alpha[i] * MCEnergy_Alpha[i + tau]
             
@@ -87,7 +96,7 @@ def ErrorHandling(MCEnergy_Alpha, block_size=10000):
 # --- Main Execution ---
 start_time = time.time()
 
-for D in [3]:
+for D in [1,2,3]:
     print(f"Computing Energies in {D} dimensions...")
 
     for N_Pos, N in enumerate(Nvalues):
@@ -105,9 +114,20 @@ for D in [3]:
             MCMatrix = RandomMatrix(N_Cycles, N, D)
 
             MeanEnergy, rejected_steps = MonteCarloSampling(
-                Alpha, Alpha_Pos, N, N_Pos, MCMatrix, xOld, MCEnergy, rejected_steps, D
+                Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, rejected_steps,
             )
-            sigma2[Alpha_Pos], tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos,:])
+            if MeanEnergy.shape[0]==N_Alpha+1:
+                if MeanEnergy==np.zeros(N_Alpha+1):
+                    print("The wavefunction is negative")
+                    sys.exit()
+                if MeanEnergy==np.ones(N_Alpha+1):
+                    print("Division by 0: the Wavefunction is too small")
+                    sys.exit()
+                if not ((N_Cycles-Therm_steps)/10000).is_integer():
+                    print("Number of MC Cycles is not a multiple of 10000: the number of blocks is not an integer")
+                    sys.exit()
+            if D==3:
+                sigma2[Alpha_Pos], tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos,:])
 
         # Calcola total_moves utilizzando np.int64
         total_moves = np.int64(N_Cycles - Therm_steps) * np.int64(N_Alpha)
@@ -120,7 +140,12 @@ for D in [3]:
         err = np.sqrt(sigma2 * np.abs(tau_bar) / (N_Cycles - Therm_steps))
         min_error = err[min_index]
         print(f"Optimal alpha for N={N}: {best_alpha}, Minimum energy: {min_energy}")
-        print(f"Error for minimum energy (Alpha = {best_alpha}): {min_error}")
+        
+        if D==3:
+            print(f"Error for minimum energy (Alpha = {best_alpha}): {min_error}")
+        else:
+            print("Error not computed for D=/=3")
+            
         plt.figure()
         plt.errorbar(alpha_values, MeanEnergy, yerr=err ,label=f"N={N}", color='b', marker='o')
         plt.xlabel("Alpha values")

@@ -123,7 +123,7 @@ for D in [1,2,3]:
                 if MeanEnergy==np.ones(N_Alpha+1):
                     print("Division by 0: the Wavefunction is too small")
                     sys.exit()
-                if not ((N_Cycles-Therm_steps)/10000).is_integer():
+                if not ((N_Cycles-Therm_steps)/block_size).is_integer():
                     print("Number of MC Cycles is not a multiple of 10000: the number of blocks is not an integer")
                     sys.exit()
             if D==3:

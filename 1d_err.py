@@ -22,7 +22,7 @@ N_Values = np.array([1, 10, 100, 500]) # N°of Harmonic Oscillators
 Therm_Steps = 200 # N° of Thermalization steps
 Delta = 1e-10 # Tolerance
 Lambda = 0.0001 # Learning rate of GDM
-block_size = 100 # Size of Tau blocks for error analysis
+Block_Size = 100 # Size of Tau blocks for error analysis
 
 @njit
 def WaveFunction(x, alpha): # Definition of Wave function
@@ -45,7 +45,7 @@ def GF(xOld: np.ndarray, xNew: np.ndarray, F: np.ndarray, alpha): # Quotient of 
     return np.exp(-(0.5 * (0.25 * Time_Step * (np.sum(DriftForce(xOld, alpha)**2, axis=1) - np.sum(DriftForce(xNew, alpha)**2, axis=1)) + np.sum((xOld - xNew) * (DriftForce(xNew, alpha) - DriftForce(xOld, alpha)), axis=1))))
 
 @njit
-def MonteCarloSampling(Alpha, MCMatrix, xOld, total_steps, rejected_steps, D): # MC algorithm
+def MonteCarloSampling(Alpha, MCMatrix, xOld, rejected_steps, D): # MC algorithm
     
     MCEnergy = np.zeros(N_Cycles - Therm_Steps) # Generate vector of energies
     psiOld = WaveFunction(xOld, Alpha)
@@ -57,9 +57,9 @@ def MonteCarloSampling(Alpha, MCMatrix, xOld, total_steps, rejected_steps, D): #
 
         # Debugging: check that psi is well defined
         if np.any(psiOld<0):
-            return np.zeros(N_Alpha),-1,MCEnergy # Return flags
+            return 0,-1,MCEnergy # Return flags
         if np.any(psiOld==0):
-            return np.zeros(N_Alpha),-2,MCEnergy
+            return 0,-2,MCEnergy
 
         # Create a vector of rej/accept steps
         moves = (((psiNew**2) * GF(xOld, xNew, DriftForce(xOld, Alpha), Alpha)) / ((psiOld**2))) - np.random.normal(0, 1)
@@ -79,7 +79,7 @@ def MonteCarloSampling(Alpha, MCMatrix, xOld, total_steps, rejected_steps, D): #
                 MCEnergy[j - Therm_Steps] = LocalEnergy(xOld, Alpha, D)
 
     MeanEnergy = np.sum(MCEnergy) / (N_Cycles - Therm_Steps)
-    return MeanEnergy, rejected_steps
+    return MeanEnergy, rejected_steps, MCEnergy
 
 # Computes the errors
 @njit(parallel=True)
@@ -130,7 +130,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
             # Cycle through iterations
             for iteration in tqdm(range(max_iterations), desc=f"N={N}, alpha_initial={initial_alpha}", unit="iteration"):
                 
-                energy_up, rejected_steps = MonteCarloSampling(alpha + 0.01, MCMatrix, xOld, total_steps, rejected_steps, D)
+                energy_up, rejected_steps,_ = MonteCarloSampling(alpha + 0.01, MCMatrix, xOld, rejected_steps, D)
                 
                 # Debugging for MC: check that psi is well defined
                 if rejected_steps==-1:
@@ -138,8 +138,8 @@ for D in [1, 2, 3]: # Cycle through dimensions
                 if rejected_steps==-2:
                     raise ValueError("Division by 0: the Wavefunction is too small")
                 
-                energy_down, rejected_steps= MonteCarloSampling(alpha - 0.01, MCMatrix, xOld, total_steps, rejected_steps, D)
-
+                energy_down, rejected_steps,_= MonteCarloSampling(alpha - 0.01, MCMatrix, xOld, rejected_steps, D)
+                
                 if rejected_steps==-1:
                     raise ValueError("The wavefunction is negative")
                 if rejected_steps==-2:
@@ -163,7 +163,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
         optimal_alpha = np.mean(optimal_alphas)
         MCMatrix = RandomMatrix(N_Cycles, N, D)
         xOld = Time_Step * (np.random.normal(0, 1, (N, D)))
-        ground_state_energy, rejected_steps_ground = MonteCarloSampling(optimal_alpha, MCMatrix, xOld, 0, 0, D)
+        ground_state_energy, rejected_steps_ground,MCEnergy = MonteCarloSampling(optimal_alpha, MCMatrix, xOld, 0, D)
         
         # Debugging for MC: check that psi is well defined
         if rejected_steps==-1:
@@ -171,8 +171,8 @@ for D in [1, 2, 3]: # Cycle through dimensions
         if rejected_steps==-2:
             raise ValueError("Division by 0: the Wavefunction is too small")
 
-        # Computing Rejection rate
-        total_steps=(N_Cycles-Therm_Steps)* N_Alpha
+        # Computing Rejection rate for ground state
+        total_steps=(N_Cycles-Therm_Steps)
         rejection_rate = (rejected_steps_ground / total_steps) * 100
 
         # Computing Errors

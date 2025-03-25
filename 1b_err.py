@@ -48,9 +48,9 @@ def MonteCarloSampling(Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, reject
                 
             # Debugging: Check for psi to be well defined
             if psiOld<0:
-                return np.zeros(N_Alpha+1), 0
+                return np.zeros(N_Alpha+1), -1
             if psiOld**2==0:
-                return np.ones(N_Alpha+1), 0 
+                return np.ones(N_Alpha+1), -2
             
             if (psiNew ** 2 / psiOld ** 2) > np.random.rand(): # Acceptance condition
                 xOld[:, :] = xNew
@@ -122,14 +122,11 @@ for D in [1,2,3]: # Cycle through dimensions
                 Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, rejected_steps,
             )
             
-            # Debugging from MC: Check that psi is well defined
-            if MeanEnergy.shape[0]==N_Alpha+1:
-                if MeanEnergy==np.zeros(N_Alpha+1):
-                    print("The wavefunction is negative")
-                    sys.exit()
-                if MeanEnergy==np.ones(N_Alpha+1):
-                    print("Division by 0: the Wavefunction is too small")
-                    sys.exit()
+            # Debugging for MC: check that psi is well defined
+            if rejected_steps==-1:
+                raise ValueError("The wavefunction is negative")
+            if rejected_steps==-2:
+                raise ValueError("Division by 0: the Wavefunction is too small")
             
             # Update errors
             tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos,:])

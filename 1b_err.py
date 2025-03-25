@@ -1,9 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy.optimize import curve_fit
 from numba import njit, prange
 from tqdm import tqdm
 import time
+import os
 import psutil
 
 def get_memory_usage(): # Memory usage function
@@ -21,7 +21,7 @@ N_Alpha = 40 # Number of Alpha points
 N_Cycles = 100000 # Number of Monte Carlo Cycles
 Step_Size = np.array([2, 0.6, 0.2, 0.08], dtype=np.float64) # Step size for each N-Harmonic oscillator
 N_Values = np.array([1, 10, 100, 500]) # Number of oscillators
-Therm_steps = 10000 # Thermalization steps
+Therm_Steps = 10000 # Thermalization steps
 block_size=10000 # Size of Tau blocks for error analysis
 
 @njit
@@ -40,48 +40,36 @@ def MonteCarloSampling(Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, reject
     psiOld = WaveFunction(xOld, Alpha)
     
     # xOld is a [N x D] matrix
-    # MCEnergy is a [N_Alpha x (N_Cycles-Therm_steps)] matrix
+    # MCEnergy is a [N_Alpha x (N_Cycles-Therm_Steps)] matrix
     
     for j in range(1, N_Cycles): # Excluding 0 since the energy at the initial state is computed outside
-        if j < Therm_steps: # Start Thermalization
-            xNew = xOld + Step_Size[N_Pos] * (MCMatrix[j, :, :] - 0.5) # Updating position
-            psiNew = WaveFunction(xNew, Alpha)
-
-            # Debugging for Wavefunction
-            if psiOld<0:
-                return np.zeros(N_Alpha+1), 0 # Flag for negative wavefunction
-            if psiOld==0:
-                return np.ones(N_Alpha+1), 0 # Flag for null wavefunction
-                
-            if (psiNew ** 2 / psiOld ** 2) > np.random.rand(): # Acceptance MC condition
-                xOld[:, :] = xNew
-                psiOld = psiNew            
-        else:
             xNew = xOld + Step_Size[N_Pos] * (MCMatrix[j, :, :] - 0.5)
             psiNew = WaveFunction(xNew, Alpha)
                 
+            # Debugging: Check for psi to be well defined
             if psiOld<0:
                 return np.zeros(N_Alpha+1), 0
             if psiOld**2==0:
                 return np.ones(N_Alpha+1), 0 
             
-            if (psiNew ** 2 / psiOld ** 2) > np.random.rand(): 
+            if (psiNew ** 2 / psiOld ** 2) > np.random.rand(): # Acceptance condition
                 xOld[:, :] = xNew
                 psiOld = psiNew
-                MCEnergy[Alpha_Pos, j - Therm_steps] = LocalEnergy(xOld, xOld.shape[0], Alpha, xOld.shape[1]) # Update energy
+                if j >= Therm_Steps: # Only outside of Thermalization
+                    MCEnergy[Alpha_Pos, j - Therm_Steps] = LocalEnergy(xOld, xOld.shape[0], Alpha, xOld.shape[1]) # Update energy
             else:
-                rejected_steps += 1 # Update rejected steps
-                MCEnergy[Alpha_Pos, j-Therm_steps] = MCEnergy[Alpha_Pos, j - Therm_steps- 1]
+                if j >= Therm_Steps: # Only outside of Thermalization
+                    rejected_steps += 1
+                    MCEnergy[Alpha_Pos, j-Therm_Steps] = MCEnergy[Alpha_Pos, j - Therm_Steps- 1]
 
-    MeanEnergy = np.sum(MCEnergy, axis=1) / (N_Cycles - Therm_steps) # Compute mean energy vector
+    MeanEnergy = np.sum(MCEnergy, axis=1) / (N_Cycles - Therm_Steps) # Compute mean energy vector
 
     return MeanEnergy, rejected_steps
     
 @njit(parallel=True)
 def ErrorHandling(MCEnergy_Alpha):
     
-    MeanEnergy = np.sum(MCEnergy_Alpha) / (N_Cycles - Therm_steps)
-    sigma2 = np.sum((MCEnergy_Alpha - MeanEnergy) ** 2) / (N_Cycles - Therm_steps) # Computes STD**2
+    MeanEnergy = np.sum(MCEnergy_Alpha) / (N_Cycles - Therm_Steps)
     
     numerator = 0 # Numerator of C_tau for each alpha
     n = MCEnergy_Alpha.shape[0]
@@ -109,7 +97,7 @@ start_time = time.time() # Start timer
 for D in [1,2,3]: # Cycle through dimensions
     
     # Debugging: checking that blocks in error handling are well defined
-    if not ((N_Cycles-Therm_steps)/block_size).is_integer():
+    if not ((N_Cycles-Therm_Steps)/block_size).is_integer():
         print(f"Number of MC Cycles is not a multiple of {block_size}: the number of blocks is not an integer")
         sys.exit()
     
@@ -118,8 +106,8 @@ for D in [1,2,3]: # Cycle through dimensions
     for N_Pos, N in enumerate(N_Values): # Cycle through N° of oscillators
         rejected_steps = 0
         alpha_values = np.linspace(0.7, 1.3, N_Alpha) # Range for plotting
-        MCEnergy = np.zeros((N_Alpha, N_Cycles-Therm_steps)) # Initialize Energy matrix
-        tau_bar=np.zeros(N_Alpha)  # initialize errors
+        MCEnergy = np.zeros((N_Alpha, N_Cycles-Therm_Steps)) # Initialize Energy matrix
+        tau_bar=np.zeros(N_Alpha)  # Initialize errors
         
         for Alpha_Pos in tqdm(range(N_Alpha)): # Cycle through alphas
             Alpha = alpha_values[Alpha_Pos]
@@ -134,8 +122,7 @@ for D in [1,2,3]: # Cycle through dimensions
                 Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, rejected_steps,
             )
             
-            # Debugging 
-            
+            # Debugging from MC: Check that psi is well defined
             if MeanEnergy.shape[0]==N_Alpha+1:
                 if MeanEnergy==np.zeros(N_Alpha+1):
                     print("The wavefunction is negative")
@@ -143,12 +130,12 @@ for D in [1,2,3]: # Cycle through dimensions
                 if MeanEnergy==np.ones(N_Alpha+1):
                     print("Division by 0: the Wavefunction is too small")
                     sys.exit()
-            if D==3: # Evaluating errors only in 3D case
-                tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos,:])
+            
+            # Update errors
+            tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos,:])
 
-        total_moves = (N_Cycles - Therm_steps) * (N_Alpha) # Total Step of MC
+        total_moves = (N_Cycles - Therm_Steps) * (N_Alpha) # Total Step of MC
         rejection_percentage = (rejected_steps / total_moves) * 100 
-        print(f"Rejection Percentage for N={N}: {rejection_percentage:.2f}%")
 
         #Find Minimum value
         
@@ -157,15 +144,8 @@ for D in [1,2,3]: # Cycle through dimensions
         min_energy = MeanEnergy[min_index]
 
         #Set Errors
-        err = np.sqrt(np.abs(tau_bar) / (N_Cycles - Therm_steps))
+        err = np.sqrt(np.abs(tau_bar) / (N_Cycles - Therm_Steps))
         min_error = err[min_index] # Error on minimum energy
-        
-        print(f"Optimal alpha for N={N}: {best_alpha}, Minimum energy: {min_energy}")
-        
-        if D==3:
-            print(f"Error for minimum energy (Alpha = {best_alpha}): {min_error}")
-        else:
-            print("Error not computed for D=/=3")
 
         # Plotting Section
         plt.figure()
@@ -175,7 +155,12 @@ for D in [1,2,3]: # Cycle through dimensions
         plt.title(f"Energy vs Alpha for N={N}, D={D}")
         plt.legend()
         plt.show()
+        
+        # Printing section
         print(f"Energies in {D} dimensions for {N} harmonic oscillators")
+        print(f"Optimal alpha for N={N}: {best_alpha}, Minimum energy: {min_energy}")
+        print(f"Error for minimum energy (Alpha = {best_alpha}): {min_error}")
+        print(f"Rejection Percentage for N={N}, D={D}: {rejection_percentage:.2f}%")
 
 end_time = time.time() #Stop Timer
 runtime = end_time - start_time

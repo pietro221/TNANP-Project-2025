@@ -122,7 +122,6 @@ for D in [1, 2, 3]:
         rejected_steps = 0
         alpha_values = np.linspace(0.7, 1.3, N_Alpha)
         MCEnergy = np.zeros((N_Alpha, N_Cycles - Therm_Steps))
-        sigma2 = np.zeros(N_Alpha)
         tau_bar = np.zeros(N_Alpha)
 
         for Alpha_Pos in tqdm(range(N_Alpha)):

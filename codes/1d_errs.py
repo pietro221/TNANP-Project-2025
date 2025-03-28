@@ -172,7 +172,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
             raise ValueError("Division by 0: the Wavefunction is too small")
 
         # Computing Rejection rate for ground state
-        total_steps=(N_Cycles-Therm_Steps)
+        total_steps= N_Cycles-Therm_Steps
         rejection_rate = (rejected_steps_ground / total_steps) * 100
 
         # Computing Errors

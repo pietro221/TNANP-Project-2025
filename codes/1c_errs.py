@@ -46,7 +46,7 @@ def GF(xOld: np.ndarray, xNew: np.ndarray, F: np.ndarray, alpha): # Formula for 
 
 # MC Algorithm
 @njit
-def MonteCarloSampling(Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, total_steps, rejected_steps, D):
+def MonteCarloSampling(Alpha, Alpha_Pos, MCMatrix, xOld, MCEnergy, total_steps, rejected_steps, D):
     psiOld = WaveFunction(xOld, Alpha)
 
     # xOld is a [N x D] matrix
@@ -114,7 +114,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
         print(f"Number of MC Cycles is not a multiple of {Block_Size}: the number of blocks is not an integer")
         sys.exit()
         
-    for N_Pos, N in enumerate(N_Values): # Cycle through through N° of Oscillators
+    for N in N_Values: # Cycle through through N° of Oscillators
         total_steps = 0
         rejected_steps = 0
         alpha_values = np.linspace(0.7, 1.3, N_Alpha) # Range for plotting
@@ -129,7 +129,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
             MCMatrix = RandomMatrix(N_Cycles, N, D)
             
             #Start MC simulation for each alpha
-            MeanEnergy, rejected_steps, MCEnergy = MonteCarloSampling(Alpha, Alpha_Pos, N_Pos, MCMatrix, xOld, MCEnergy, total_steps, rejected_steps, D)
+            MeanEnergy, rejected_steps, MCEnergy = MonteCarloSampling(Alpha, Alpha_Pos, MCMatrix, xOld, MCEnergy, total_steps, rejected_steps, D)
             
             # Debugging for MC: check that psi is well defined
             if rejected_steps==-1:

@@ -29,8 +29,8 @@ def WaveFunction(x, alpha): # Definition of Wavefunction
     return np.exp(-0.5 * alpha**2 * (np.sum(x**2, axis=1)))
 
 @njit
-def LocalEnergy(x, alpha, D): # Formula for Local Energy E_L(alpha,x)
-    return 0.5 * ((m * w**2 - hcut**2 * alpha**4 * m**(-1)) * np.sum(np.sum(x**2, axis=1)) + x.shape[0] * D * alpha**2 * hcut**2 * m**(-1))
+def LocalEnergy(x, N, alpha, D): # Formula for Local Energy E_L(alpha,x)
+    return 0.5 * ((m * w**2 - hcut**2 * alpha**4 * m**(-1)) * np.sum(np.sum(x**2, axis=1)) + N * D * alpha**2 * hcut**2 * m**(-1))
 
 def RandomMatrix(N_Cycles, N, D): # Random MC Number generator
     rng = np.random.default_rng(41)
@@ -46,7 +46,7 @@ def GF(xOld: np.ndarray, xNew: np.ndarray, F: np.ndarray, alpha): # Formula for 
 
 # MC Algorithm
 @njit
-def MonteCarloSampling(Alpha, Alpha_Pos, MCMatrix, xOld, MCEnergy, total_steps, rejected_steps, D):
+def MonteCarloSampling(Alpha, Alpha_Pos, MCMatrix, xOld, MCEnergy, rejected_steps):
     psiOld = WaveFunction(xOld, Alpha)
 
     # xOld is a [N x D] matrix
@@ -73,12 +73,12 @@ def MonteCarloSampling(Alpha, Alpha_Pos, MCMatrix, xOld, MCEnergy, total_steps, 
                 rejected_steps+=1
                 MCEnergy[Alpha_Pos, j - Therm_Steps] = MCEnergy[Alpha_Pos, j - Therm_Steps - 1]
         else:
+            matrixmoves = np.ones((xOld.shape[0], xOld.shape[1])) * moves[:, np.newaxis] 
+            xOld += (xNew - xOld) * matrixmoves
+            psiOld = WaveFunction(xOld, Alpha)
             if j > Therm_Steps:
                 # We add to xOld only the accepted elements of Moves
-                matrixmoves = np.ones((xOld.shape[0], D)) * moves[:, np.newaxis] 
-                xOld += (xNew - xOld) * matrixmoves
-                psiOld = WaveFunction(xOld, Alpha)
-                MCEnergy[Alpha_Pos, j - Therm_Steps] = LocalEnergy(xOld, Alpha, D)
+                MCEnergy[Alpha_Pos, j - Therm_Steps] = LocalEnergy(xOld, xOld.shape[0], Alpha, xOld.shape[1])
 
     MeanEnergy = np.sum(MCEnergy, axis=1) / (N_Cycles - Therm_Steps)
     return MeanEnergy, rejected_steps, MCEnergy
@@ -104,17 +104,15 @@ def ErrorHandling(MCEnergy_Alpha):
             numerator += sum_corr - MeanEnergy**2 # Final expression for tau bar
 
     return numerator
-
 start_time = time.time() # Start timer
-for D in [1, 2, 3]: # Cycle through dimensions
-    print(f"Computing Energies in {D} dimensions...")
-    
+for D in [1,2,3]: # Cycle through dimensions
+    print(f"Computing Energies in {D} dimensions..")
+
     # Debugging: checking that blocks in error handling are well defined
     if not ((N_Cycles-Therm_Steps)/Block_Size).is_integer():
-        print(f"Number of MC Cycles is not a multiple of {Block_Size}: the number of blocks is not an integer")
-        sys.exit()
-        
-    for N in N_Values: # Cycle through through N° of Oscillators
+        raise ValueError(f"Number of MC Cycles is not a multiple of {Block_Size}: the number of blocks is not an integer")
+
+    for N_Pos, N in enumerate(N_Values): # Cycle through through N° of Oscillators
         total_steps = 0
         rejected_steps = 0
         alpha_values = np.linspace(0.7, 1.3, N_Alpha) # Range for plotting
@@ -125,16 +123,16 @@ for D in [1, 2, 3]: # Cycle through dimensions
             Alpha = alpha_values[Alpha_Pos]
             xOld = Time_Step * (np.random.normal(0, 1, (N, D))) # Set random Non-equilibrium initial position 
             psiOld = WaveFunction(xOld, Alpha)
-            MCEnergy[Alpha_Pos, 0] = LocalEnergy(xOld, Alpha, D) # Set Non-equilibrium initial energy 
+            MCEnergy[Alpha_Pos, 0] = LocalEnergy(xOld, N, Alpha, D) # Set Non-equilibrium initial energy 
             MCMatrix = RandomMatrix(N_Cycles, N, D)
-            
+
             #Start MC simulation for each alpha
-            MeanEnergy, rejected_steps, MCEnergy = MonteCarloSampling(Alpha, Alpha_Pos, MCMatrix, xOld, MCEnergy, total_steps, rejected_steps, D)
-            
+            MeanEnergy, rejected_steps, MCEnergy = MonteCarloSampling(Alpha, Alpha_Pos, MCMatrix, xOld, MCEnergy, rejected_steps)
+
             # Debugging for MC: check that psi is well defined
             if rejected_steps==-1:
                 raise ValueError("The wavefunction is negative")
-                
+
             if rejected_steps==-2:
                 raise ValueError("Division by 0: the Wavefunction is too small")
 
@@ -144,16 +142,16 @@ for D in [1, 2, 3]: # Cycle through dimensions
         # Compute rejection %
         total_steps = (N_Cycles- Therm_Steps) * N_Alpha    
         rejection_percentage = (rejected_steps / total_steps) * 100
-        
+
         # Find Minimum value
         min_index = np.argmin(MeanEnergy)
         best_alpha = alpha_values[min_index]
         min_energy = MeanEnergy[min_index] 
-        
+
         # Set Errors
         err = np.sqrt(np.abs(tau_bar) / (N_Cycles - Therm_Steps))
         min_error = err[min_index] # Error on minimum energy
-        
+
         # Plotting Section
         plt.figure()
         plt.errorbar(alpha_values, MeanEnergy, yerr=err, label=f"N={N}", color='b', marker='o')
@@ -168,6 +166,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
         print(f"Optimal alpha for N={N}: {best_alpha}, Minimum energy: {min_energy}")
         print(f"Error for minimum energy (Alpha = {best_alpha}): {min_error}")
         print(f"Rejection Percentage for N={N}, D={D}: {rejection_percentage:.2f}%")
+
 
 #Stop Timer
 end_time = time.time()

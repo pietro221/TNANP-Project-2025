@@ -98,8 +98,7 @@ for D in [1,2,3]: # Cycle through dimensions
     
     # Debugging: checking that blocks in error handling are well defined
     if not ((N_Cycles-Therm_Steps)/block_size).is_integer():
-        print(f"Number of MC Cycles is not a multiple of {block_size}: the number of blocks is not an integer")
-        sys.exit()
+        raise ValueError(f"Number of MC Cycles is not a multiple of {block_size}: the number of blocks is not an integer")
     
     print(f"Computing Energies in {D} dimensions...")
 

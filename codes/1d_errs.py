@@ -38,18 +38,18 @@ def RandomMatrix(N_Cycles, N, D): # random number generator
 
 @njit
 def DriftForce(x: np.ndarray, alpha: float): # Formula for drift force
-    return -alpha**2 * x
+    return - x
 
 @njit
 def GF(xOld: np.ndarray, xNew: np.ndarray, F: np.ndarray, alpha): # Quotient of Green-functions
     return np.exp(-(0.5 * (0.25 * Time_Step * (np.sum(DriftForce(xOld, alpha)**2, axis=1) - np.sum(DriftForce(xNew, alpha)**2, axis=1)) + np.sum((xOld - xNew) * (DriftForce(xNew, alpha) - DriftForce(xOld, alpha)), axis=1))))
 
 @njit
-def MonteCarloSampling(Alpha, MCMatrix, xOld, rejected_steps, D): # MC algorithm
+def MonteCarloSampling(Alpha, MCMatrix, xOld, rejected_steps): # MC algorithm
     
     MCEnergy = np.zeros(N_Cycles - Therm_Steps) # Generate vector of energies
     psiOld = WaveFunction(xOld, Alpha)
-    MCEnergy[0]=LocalEnergy(xOld, Alpha, D) # Set starting energy
+    MCEnergy[0]=LocalEnergy(xOld, Alpha, xOld.shape[1]) # Set starting energy
     
     for j in range(1, N_Cycles): # Start MC Cycle
         xNew = xOld + 0.5 * DriftForce(xOld, Alpha) * Time_Step + MCMatrix[j, :, :] * sqrt(Time_Step)
@@ -71,12 +71,12 @@ def MonteCarloSampling(Alpha, MCMatrix, xOld, rejected_steps, D): # MC algorithm
                 rejected_steps += 1
                 MCEnergy[j - Therm_Steps] = MCEnergy[j - Therm_Steps - 1]
         else:
+            # We add to xOld only the accepted elements of Moves
+            matrixmoves = np.ones((N, xOld.shape[1])) * moves[:, np.newaxis]
+            xOld += (xNew - xOld) * matrixmoves
+            psiOld = WaveFunction(xOld + (xNew - xOld) * matrixmoves, Alpha)
             if j > Therm_Steps:
-                # We add to xOld only the accepted elements of Moves
-                matrixmoves = np.ones((N, D)) * moves[:, np.newaxis]
-                xOld += (xNew - xOld) * matrixmoves
-                psiOld = WaveFunction(xOld + (xNew - xOld) * matrixmoves, Alpha)
-                MCEnergy[j - Therm_Steps] = LocalEnergy(xOld, Alpha, D)
+                MCEnergy[j - Therm_Steps] = LocalEnergy(xOld, Alpha, xOld.shape[1])
 
     MeanEnergy = np.sum(MCEnergy) / (N_Cycles - Therm_Steps)
     return MeanEnergy, rejected_steps, MCEnergy
@@ -108,9 +108,8 @@ start_time = time.time() # Start timer
 for D in [1, 2, 3]: # Cycle through dimensions
     
     # Debugging: checking that blocks in error handling are well defined
-    if not ((N_Cycles-Therm_Steps)/block_size).is_integer():
-        print(f"Number of MC Cycles is not a multiple of {block_size}: the number of blocks is not an integer")
-        sys.exit()
+    if not ((N_Cycles-Therm_Steps)/Block_Size).is_integer():
+        raise ValueError(f"Number of MC Cycles is not a multiple of {block_size}: the number of blocks is not an integer")
     
     print(f"Computing Energies in {D} dimensions...")
     
@@ -130,7 +129,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
             # Cycle through iterations
             for iteration in tqdm(range(max_iterations), desc=f"N={N}, alpha_initial={initial_alpha}", unit="iteration"):
                 
-                energy_up, rejected_steps,_ = MonteCarloSampling(alpha + 0.01, MCMatrix, xOld, rejected_steps, D)
+                energy_up, rejected_steps,_ = MonteCarloSampling(alpha + 0.01, MCMatrix, xOld, rejected_steps)
                 
                 # Debugging for MC: check that psi is well defined
                 if rejected_steps==-1:
@@ -138,7 +137,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
                 if rejected_steps==-2:
                     raise ValueError("Division by 0: the Wavefunction is too small")
                 
-                energy_down, rejected_steps,_= MonteCarloSampling(alpha - 0.01, MCMatrix, xOld, rejected_steps, D)
+                energy_down, rejected_steps,_= MonteCarloSampling(alpha - 0.01, MCMatrix, xOld, rejected_steps)
                 
                 if rejected_steps==-1:
                     raise ValueError("The wavefunction is negative")
@@ -163,7 +162,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
         optimal_alpha = np.mean(optimal_alphas)
         MCMatrix = RandomMatrix(N_Cycles, N, D)
         xOld = Time_Step * (np.random.normal(0, 1, (N, D)))
-        ground_state_energy, rejected_steps_ground,MCEnergy = MonteCarloSampling(optimal_alpha, MCMatrix, xOld, 0, D)
+        ground_state_energy, rejected_steps_ground,MCEnergy = MonteCarloSampling(optimal_alpha, MCMatrix, xOld, 0)
         
         # Debugging for MC: check that psi is well defined
         if rejected_steps==-1:
@@ -172,7 +171,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
             raise ValueError("Division by 0: the Wavefunction is too small")
 
         # Computing Rejection rate for ground state
-        total_steps= N_Cycles-Therm_Steps
+        total_steps=(N_Cycles-Therm_Steps)
         rejection_rate = (rejected_steps_ground / total_steps) * 100
 
         # Computing Errors

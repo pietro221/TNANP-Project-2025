@@ -89,7 +89,7 @@ def ErrorHandling(MCEnergy_Alpha):
     MeanEnergy = np.sum(MCEnergy_Alpha) / MCEnergy_Alpha.shape[0]
     numerator = 0 # Numerator of C_tau for each alpha
     n = MCEnergy_Alpha.shape[0]
-    num_blocks = (n + Block_Size - 1) // Block_Size # Well definiteness checked outside
+    num_blocks = n // Block_Size # Well definiteness checked outside
 
     for block in prange(num_blocks): 
         start = block * Block_Size # Starting tau 

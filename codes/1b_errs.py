@@ -88,7 +88,7 @@ def ErrorHandling(MCEnergy_Alpha):
             sum_corr /= (n - tau) # normalization
             numerator += sum_corr - MeanEnergy**2
     
-    return numerator, sigma2 # final expression for tau_bar
+    return numerator # final expression for tau_bar
 
 
 # --- Main Execution --- #

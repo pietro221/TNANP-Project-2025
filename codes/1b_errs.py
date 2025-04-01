@@ -22,7 +22,7 @@ N_Cycles = 100000 # Number of Monte Carlo Cycles
 Step_Size = np.array([2, 0.6, 0.2, 0.08], dtype=np.float64) # Step size for each N-Harmonic oscillator
 N_Values = np.array([1, 10, 100, 500]) # Number of oscillators
 Therm_Steps = 10000 # Thermalization steps
-block_size=10000 # Size of Tau blocks for error analysis
+Block_Size=10000 # Size of Tau blocks for error analysis
 
 @njit
 def WaveFunction(x, alpha): # Definition of Wavefunction
@@ -74,11 +74,11 @@ def ErrorHandling(MCEnergy_Alpha):
     numerator = 0 # Numerator of C_tau for each alpha
     n = MCEnergy_Alpha.shape[0]
     
-    num_blocks = n // block_size # Well definiteness checked outside
+    num_blocks = n // Block_Size # Well definiteness checked outside
         
     for block in prange(num_blocks):  # Parallelizzazione con prange
-        start = block * block_size # Starting tau
-        end = min((block + 1) * block_size, n) # Ending tau
+        start = block * Block_Size # Starting tau
+        end = min((block + 1) * Block_Size, n) # Ending tau
         
         for tau in range(start, end):  # Cycle through taus
             sum_corr = 0

@@ -112,7 +112,7 @@ for D in [1,2,3]: # Cycle through dimensions
     if not ((N_Cycles-Therm_Steps)/Block_Size).is_integer():
         raise ValueError(f"Number of MC Cycles is not a multiple of {Block_Size}: the number of blocks is not an integer")
 
-    for N_Pos, N in enumerate(N_Values): # Cycle through through N° of Oscillators
+    for N in N_Values: # Cycle through through N° of Oscillators
         total_steps = 0
         rejected_steps = 0
         alpha_values = np.linspace(0.7, 1.3, N_Alpha) # Range for plotting

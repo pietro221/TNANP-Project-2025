@@ -38,7 +38,7 @@ def RandomMatrix(N_Cycles, N, D): # random number generator
 
 @njit
 def DriftForce(x: np.ndarray, alpha: float): # Formula for drift force
-    return - x
+    return - alpha ** 2 * x
 
 @njit
 def GF(xOld: np.ndarray, xNew: np.ndarray, F: np.ndarray, alpha): # Quotient of Green-functions
@@ -120,7 +120,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
         max_iterations = 400 if N == 1 else 200 if N == 10 else 50 if N == 100 else 40 if N == 500 else 0
         optimal_alphas = []
 
-        for initial_alpha in [0.95, 1.05]: # Setting initial guesses for the descent
+        for initial_alpha in [0.8, 1.2]: # Setting initial guesses for the descent
             rejected_steps = 0
             alpha = initial_alpha
             MCMatrix = RandomMatrix(N_Cycles, N, D)

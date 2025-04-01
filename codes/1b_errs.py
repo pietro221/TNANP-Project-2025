@@ -129,7 +129,7 @@ for D in [1,2,3]: # Cycle through dimensions
                 raise ValueError("Division by 0: the Wavefunction is too small")
             
             # Update errors
-            tau_bar[Alpha_Pos],_ = ErrorHandling(MCEnergy[Alpha_Pos,:])
+            tau_bar[Alpha_Pos] = ErrorHandling(MCEnergy[Alpha_Pos,:])
 
         total_moves = (N_Cycles - Therm_Steps) * (N_Alpha) # Total Step of MC
         rejection_percentage = (rejected_steps / total_moves) * 100 

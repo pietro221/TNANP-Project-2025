@@ -114,7 +114,6 @@ for D in [1,2,3]: # Cycle through dimensions
             psiOld = WaveFunction(xOld, Alpha)
             MCEnergy[Alpha_Pos, 0] = LocalEnergy(xOld, N, Alpha, D) # Set Non-equilibrium initial energy 
             MCMatrix = RandomMatrix(N_Cycles, N, D)
-            # np.random.shuffle(MCMatrix) Shuffles to ensure randomness
             
             #Start MC simulation for each alpha
             

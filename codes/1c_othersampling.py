@@ -37,11 +37,11 @@ def RandomMatrix(N_Cycles, N, D): # Random MC Number generator
     return np.random.normal(0, 1, (N_Cycles, N, D))
 
 @njit
-def DriftForce(x: np.ndarray, alpha: float): # Drift Force formula
+def DriftForce(x, alpha): # Drift Force formula
     return -alpha**2 * x
 
 @njit
-def GF(xOld: np.ndarray, xNew: np.ndarray, alpha): # Formula for the quotient of the Green-Functions
+def GF(xOld, xNew, alpha): # Formula for the quotient of the Green-Functions
     return np.exp(np.sum(-(0.5 * (0.25 * Time_Step * (np.sum(DriftForce(xOld, alpha)**2, axis=1) - np.sum(DriftForce(xNew, alpha)**2, axis=1)) + np.sum((xOld - xNew) * (DriftForce(xNew, alpha) - DriftForce(xOld, alpha)), axis=1)))))
 
 # MC Algorithm
@@ -63,7 +63,7 @@ def MonteCarloSampling(Alpha, Alpha_Pos, MCMatrix, xOld, MCEnergy, rejected_step
         if psiOld**2==0:
             return np.ones(N_Alpha), -2, MCEnergy
         
-        if (GF(xOld, xNew,Alpha)*psiNew ** 2 / psiOld ** 2) > np.random.normal(): # Acceptance condition
+        if (GF(xOld, xNew, Alpha)*psiNew ** 2 / psiOld ** 2) > np.random.normal(): # Acceptance condition
             xOld[:, :] = xNew
             psiOld = psiNew
             if j >= Therm_Steps: # Only outside of Thermalization

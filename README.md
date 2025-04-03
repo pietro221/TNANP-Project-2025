@@ -20,8 +20,7 @@ Each script contains both function definitions and executable code, and they can
 
 To run the simulations, ensure you have Python installed along with the following dependencies:
 
-`bash
-pip install numpy matplotlib`
+`pip install numpy matplotlib`
 
 ## Usage
 It is recommended to run these scripts within a **Jupyter Notebook** for a better experience, as it allows for seamless execution and automatic visualization of the generated plots. Each script contains both function definitions and executable code.
@@ -30,7 +29,7 @@ It is recommended to run these scripts within a **Jupyter Notebook** for a bette
 
 1. Start a Jupyter Notebook session.
 2. Create a new cell and copy the contents of one of the scripts (`1b_errs.py`, `1c_errs.py`, or `1d_errs.py`) into the cell.
-3. Run the cell to execute the simulation and visualize the resulting plots.
+3. Run the cell to execute the simulation and visualize the results.
 
 ## Expected Results
 

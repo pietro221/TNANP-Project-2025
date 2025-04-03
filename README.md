@@ -10,7 +10,7 @@ The simulations are based on the Variational Monte Carlo (VMC) method, and the r
 
 The repository is divided into two main folders:
 
-- **`codes/`**: Contains the implementation scripts, including:
+- - **`codes/`**: Contains the implementation scripts, optimized using **Numba** for performance:
   - `1b_errs.py`: Implements a brute-force Metropolis algorithm for sampling configurations.
   - `1c_errs.py`: Replaces the previous brute-force Metropolis algorithm with an Importance Sampling algorithm.
   - `1d_errs.py`: Builds upon the Importance Sampling framework and incorporates a gradient descent method to estimate alpha instead of directly plotting the results.
@@ -27,7 +27,7 @@ Each script contains both function definitions and executable code, and they can
 
 To run the simulations, ensure you have Python installed along with the following dependencies:
 
-`pip install numpy matplotlib`
+`pip install numpy matplotlib numba`
 
 ## Usage
 It is recommended to run these scripts within a **Jupyter Notebook** for a better experience, as it allows for seamless execution and automatic visualization of the generated plots. Each script contains both function definitions and executable code.

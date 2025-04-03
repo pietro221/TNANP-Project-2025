@@ -29,8 +29,8 @@ def WaveFunction(x, alpha): # Definition of Wave function
     return np.exp(-0.5 * alpha**2 * (np.sum(x**2, axis=1)))
 
 @njit
-def LocalEnergy(x, alpha, D): # Definition of local energy
-    return 0.5 * ((m * w**2 - hcut**2 * alpha**4 * m**(-1)) * np.sum(np.sum(x**2, axis=1)) + x.shape[0] * D * alpha**2 * hcut**2 * m**(-1))
+def LocalEnergy(x, N, alpha, D): # Definition of local energy
+    return 0.5 * ((m * w**2 - hcut**2 * alpha**4 * m**(-1)) * np.sum(np.sum(x**2, axis=1)) + N * D * alpha**2 * hcut**2 * m**(-1))
 
 def RandomMatrix(N_Cycles, N, D): # random number generator
     rng = np.random.default_rng(41)
@@ -49,7 +49,7 @@ def MonteCarloSampling(Alpha, MCMatrix, xOld, rejected_steps): # MC algorithm
     
     MCEnergy = np.zeros(N_Cycles - Therm_Steps) # Generate vector of energies
     psiOld = WaveFunction(xOld, Alpha)
-    MCEnergy[0]=LocalEnergy(xOld, Alpha, xOld.shape[1]) # Set starting energy
+    MCEnergy[0]=LocalEnergy(xOld, xOld.shape[0], Alpha, xOld.shape[1]) # Set starting energy
     
     for j in range(1, N_Cycles): # Start MC Cycle
         xNew = xOld + 0.5 * DriftForce(xOld, Alpha) * Time_Step + MCMatrix[j, :, :] * sqrt(Time_Step)
@@ -76,7 +76,7 @@ def MonteCarloSampling(Alpha, MCMatrix, xOld, rejected_steps): # MC algorithm
             xOld += (xNew - xOld) * matrixmoves
             psiOld = WaveFunction(xOld + (xNew - xOld) * matrixmoves, Alpha)
             if j > Therm_Steps:
-                MCEnergy[j - Therm_Steps] = LocalEnergy(xOld, Alpha, xOld.shape[1])
+                MCEnergy[j - Therm_Steps] = LocalEnergy(xOld, xOld.shape[0], Alpha, xOld.shape[1])
 
     MeanEnergy = np.sum(MCEnergy) / (N_Cycles - Therm_Steps)
     return MeanEnergy, rejected_steps, MCEnergy

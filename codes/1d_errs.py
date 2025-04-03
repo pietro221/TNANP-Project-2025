@@ -37,11 +37,11 @@ def RandomMatrix(N_Cycles, N, D): # random number generator
     return np.random.normal(0, 1, (N_Cycles, N, D))
 
 @njit
-def DriftForce(x: np.ndarray, alpha: float): # Formula for drift force
+def DriftForce(x, alpha): # Formula for drift force
     return - alpha ** 2 * x
 
 @njit
-def GF(xOld: np.ndarray, xNew: np.ndarray, F: np.ndarray, alpha): # Quotient of Green-functions
+def GF(xOld, xNew, alpha): # Quotient of Green-functions
     return np.exp(-(0.5 * (0.25 * Time_Step * (np.sum(DriftForce(xOld, alpha)**2, axis=1) - np.sum(DriftForce(xNew, alpha)**2, axis=1)) + np.sum((xOld - xNew) * (DriftForce(xNew, alpha) - DriftForce(xOld, alpha)), axis=1))))
 
 @njit
@@ -62,7 +62,7 @@ def MonteCarloSampling(Alpha, MCMatrix, xOld, rejected_steps): # MC algorithm
             return 0,-2,MCEnergy
 
         # Create a vector of rej/accept steps
-        moves = (((psiNew**2) * GF(xOld, xNew, DriftForce(xOld, Alpha), Alpha)) / ((psiOld**2))) - np.random.normal(0, 1)
+        moves = (((psiNew**2) * GF(xOld, xNew, Alpha)) / ((psiOld**2))) - np.random.normal(0, 1)
         moves = np.where(moves > 0, 1, 0)
         
         # All elements of moves must be 0 for the step to be rejected 

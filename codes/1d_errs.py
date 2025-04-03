@@ -124,7 +124,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
             rejected_steps = 0
             alpha = initial_alpha
             MCMatrix = RandomMatrix(N_Cycles, N, D)
-            xOld = Time_Step * (np.random.normal(0, 1, (N, D))) # Set random non-equilibrium initial position 
+            xOld = sqrt(Time_Step) * (np.random.normal(0, 1, (N, D))) # Set random non-equilibrium initial position 
 
             # Cycle through iterations
             for iteration in tqdm(range(max_iterations), desc=f"N={N}, alpha_initial={initial_alpha}", unit="iteration"):
@@ -161,7 +161,7 @@ for D in [1, 2, 3]: # Cycle through dimensions
         #Calculate ground state energy once Optimal alpha is set
         optimal_alpha = np.mean(optimal_alphas)
         MCMatrix = RandomMatrix(N_Cycles, N, D)
-        xOld = Time_Step * (np.random.normal(0, 1, (N, D)))
+        xOld = sqrt(Time_Step) * (np.random.normal(0, 1, (N, D)))
         ground_state_energy, rejected_steps_ground,MCEnergy = MonteCarloSampling(optimal_alpha, MCMatrix, xOld, 0)
         
         # Debugging for MC: check that psi is well defined

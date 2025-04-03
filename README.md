@@ -23,7 +23,7 @@ To run the simulations, ensure you have Python installed along with the followin
 ```bash
 pip install numpy matplotlib
 
-### **Usage**
+## Usage
 It is recommended to run these scripts within a **Jupyter Notebook** for a better experience, as it allows for seamless execution and automatic visualization of the generated plots. Each script contains both function definitions and executable code.
 
 **Steps for running in Jupyter Notebook**:
@@ -34,7 +34,5 @@ It is recommended to run these scripts within a **Jupyter Notebook** for a bette
 
 ## Expected Results
 
-The simulation should return energy values close to ND/2 when alpha is optimized to approximately 1. If discrepancies are found, it is recommended to check the
-implementation of the physical formulas and numerical stability
 The simulation should return energy values close to ND/2 when alpha is optimized to approximately 1. If discrepancies are found, it is recommended to check the
 implementation of the physical formulas and numerical stability.

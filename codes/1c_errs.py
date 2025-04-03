@@ -121,7 +121,7 @@ for D in [1,2,3]: # Cycle through dimensions
 
         for Alpha_Pos in tqdm(range(N_Alpha)): # Cycle through Alphas
             Alpha = alpha_values[Alpha_Pos]
-            xOld = Time_Step * (np.random.normal(0, 1, (N, D))) # Set random Non-equilibrium initial position 
+            xOld = sqrt(Time_Step) * (np.random.normal(0, 1, (N, D))) # Set random Non-equilibrium initial position 
             psiOld = WaveFunction(xOld, Alpha)
             MCEnergy[Alpha_Pos, 0] = LocalEnergy(xOld, N, Alpha, D) # Set Non-equilibrium initial energy 
             MCMatrix = RandomMatrix(N_Cycles, N, D)

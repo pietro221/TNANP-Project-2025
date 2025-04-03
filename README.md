@@ -11,8 +11,8 @@ The simulations are based on the Variational Monte Carlo (VMC) method, and the r
 The repository includes three Python scripts, each implementing a different Monte Carlo approach:
 
 - **`1b_errs.py`**: Implements a brute-force Metropolis algorithm for sampling configurations.
-- **`1c_errs.py`**: We replace a brute-force Metropolis algorithm with an Importance Sampling algorithm.
-- **`1d_errs.py`**: Builds upon the importance sampling framework and incorporates a gradient descent method to estimate alpha instead of directly plotting the results.
+- **`1c_errs.py`**: Replaces the previous brute-force Metropolis algorithm with an Importance Sampling algorithm.
+- **`1d_errs.py`**: Builds upon the Importance Sampling framework and incorporates a gradient descent method to estimate alpha instead of directly plotting the results.
 
 Each script contains both function definitions and executable code, and they can be run independently.
 

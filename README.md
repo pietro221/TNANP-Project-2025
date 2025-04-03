@@ -4,7 +4,7 @@
 
 This repository contains three different implementations of a Monte Carlo simulation for a quantum system of harmonic oscillators, focusing on Bose-Einstein condensation. The goal is to study the system's energy behavior by varying parameters such as the number of particles (N), the dimension (D) and the variational parameter (alpha).
 
-The simulations are based on the Variational Monte Carlo (VMC) method, and the results aim to achieve an expected energy of ND/2 with an optimal alpha value of 1.
+The simulations are based on the Variational Monte Carlo (VMC) method, and the results aim to achieve an expected ground state energy of ND/2 with an optimal alpha value of 1.
 
 ## Contents
 
